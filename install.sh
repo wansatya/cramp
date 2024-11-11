@@ -96,7 +96,7 @@ server.listen(port, () => {
 
 // Watch for file changes using chokidar
 const watcher = chokidar.watch('src', {
-    ignored: /(^|[\/\\])\../,
+    ignored: /(^|[\/\\])\./, // Fixed regex for dotfiles
     persistent: true
 });
 
