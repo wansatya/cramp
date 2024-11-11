@@ -2,77 +2,92 @@
 
 Creative Rapid AI Modern Platform - A zero-dependency framework for building AI-powered web applications.
 
-## Features
-
-- 🚀 **Zero-dependency core** - Lightweight and fast
-- ⚡ **Simple API** - Intuitive and easy to learn
-- 🤖 **AI-first design** - Built for AI applications
-- 📦 **Component system** - Reusable and composable
-- 🛣️ **Built-in routing** - Simple and powerful
-- 🔄 **State management** - Reactive and efficient
-- 🛠️ **Developer tools** - CLI and development server
-
 ## Quick Start
 
 ```bash
-# Create a new project
-npx create-cramp my-app
-
-# Navigate to project
-cd my-app
-
-# Start development server
+curl -sSL https://raw.githubusercontent.com/wansatya/cramp/master/install.sh | bash -s cramp-ai
+```
+```bash
+cd cramp-ai
+```
+```bash
 npm run dev
 ```
 
-## Examples
+Your app will be running at `http://localhost:3000` 🚀
 
-### Minimal Example
+## Features
+
+- 🚀 **Zero-dependency core** - Lightweight and fast
+- ⚡ **Simple API** - React-like component system
+- 🤖 **AI-first design** - Built for AI applications
+- 📦 **Modern stack** - ES Modules + Tailwind CSS
+- 🔄 **Hot reload** - See changes instantly
+- 🛠️ **Developer friendly** - Clear project structure
+
+## Project Structure
+
+```
+cramp-ai/
+├── src/
+│   ├── components/    # Reusable components
+│   ├── pages/         # Page components
+│   ├── styles/        # CSS styles
+│   ├── index.js       # Entry point
+│   └── App.js         # Main component
+├── public/
+│   └── cramp.js       # Framework core
+└── package.json
+```
+
+## Creating Components
+
 ```javascript
-import { createApp } from '@cramp/core';
+// src/components/MyComponent.js
+export default {
+    template: `
+        <div class="my-component">
+            <h1>{{ title }}</h1>
+            <button onclick="this.getRootNode().host.handleClick()">
+                Click me
+            </button>
+        </div>
+    `,
 
-const app = createApp({
-  apiKey: 'your-api-key'
-});
+    state: {
+        title: 'Hello CRAMP!'
+    },
 
-app.component('hello-ai', `
-  <div>
-    <button x-on:click="generate">Generate</button>
-    <div>{{ result }}</div>
-  </div>
-`, {
-  async generate() {
-    const result = await this.app.ai.process('Hello, AI!');
-    this.setState({ result });
-  }
-});
-
-app.mount('#app');
+    handleClick() {
+        this.setState({
+            title: 'CRAMP is awesome!'
+        });
+    }
+};
 ```
 
-### Chat Example
-See `examples/chat-app` for a full chat application example.
+## Using Components
 
-### Full Featured Example
-See `examples/full-featured` for a complete application with all features.
+```javascript
+// src/App.js
+import { cramp } from '/cramp.js';
+import MyComponent from './components/MyComponent.js';
 
-## Documentation
-
-### Installation
-
-```bash
-# Using npx (recommended)
-npx create-cramp my-app
-
-# Using npm
-npm init cramp my-app
-
-# Global CLI
-npm install -g @cramp/cli
-cramp create my-app
+export default {
+    template: `
+        <div class="app">
+            <cramp-my-component></cramp-my-component>
+        </div>
+    `,
+    
+    async connectedCallback() {
+        const app = cramp.create();
+        app.component('cramp-my-component', MyComponent);
+    }
+};
 ```
 
-### Development
+## Available Scripts
 
 ```bash
 # Start development server
@@ -81,115 +96,163 @@ npm run dev
 # Build for production
 npm run build
 
-# Run tests
-npm test
+# Start production server
+npm start
 ```
 
-### Project Structure
+## Customization
 
-```
-my-app/
-├── src/
-│   ├── components/    # Application components
-│   ├── routes/        # Route components
-│   └── index.js       # Application entry
-├── public/            # Static assets
-└── package.json
+### Tailwind CSS
+
+The framework comes with Tailwind CSS pre-configured. You can customize the theme in your HTML:
+
+```html
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                cramp: {
+                    500: '#ff4f4f',
+                    // ... other shades
+                }
+            }
+        }
+    }
+};
+</script>
 ```
 
-### CLI Commands
+### Components
+
+Components follow a simple pattern with template, state, and methods:
+
+```javascript
+export default {
+    // Template with state bindings
+    template: `<div>{{ message }}</div>`,
+
+    // Component state
+    state: {
+        message: 'Hello!'
+    },
+
+    // Lifecycle method
+    connectedCallback() {
+        console.log('Component mounted');
+    },
+
+    // Custom methods
+    handleEvent() {
+        this.setState({ message: 'Updated!' });
+    }
+};
+```
+
+## Development
+
+1. Clone the repository:
+```bash
+curl -sSL https://raw.githubusercontent.com/wansatya/cramp/master/install.sh | bash -s cramp-ai
+```
+
+2. Install dependencies:
+```bash
+cd cramp-ai
+npm install
+```
+
+3. Start development server:
+```bash
+npm run dev
+```
+
+## Production
+
+Build your app for production:
 
 ```bash
-# Create new project
-cramp create my-app
+npm run build
+```
 
-# Generate component
-cramp component MyComponent
+The built files will be in the `dist/` directory.
 
-# Generate route
-cramp route /path
+## Examples
 
-# Start development
-cramp dev
+Check out these examples:
 
-# Build for production
-cramp build
+1. Basic Component:
+```javascript
+// components/Counter.js
+export default {
+    template: `
+        <div class="counter">
+            <h2>Count: {{ count }}</h2>
+            <button onclick="this.getRootNode().host.increment()">
+                Increment
+            </button>
+        </div>
+    `,
+    
+    state: {
+        count: 0
+    },
+    
+    increment() {
+        this.setState({
+            count: this.state.count + 1
+        });
+    }
+};
+```
+
+2. AI Integration:
+```javascript
+// components/AiChat.js
+export default {
+    template: `
+        <div class="ai-chat">
+            <div class="messages">{{ response }}</div>
+            <input 
+                type="text" 
+                onkeyup="this.getRootNode().host.handleInput(event)"
+            >
+        </div>
+    `,
+    
+    state: {
+        response: ''
+    },
+    
+    async handleInput(event) {
+        if (event.key === 'Enter') {
+            const response = await fetch('/api/ai', {
+                method: 'POST',
+                body: JSON.stringify({
+                    prompt: event.target.value
+                })
+            });
+            const data = await response.json();
+            this.setState({ response: data.text });
+        }
+    }
+};
 ```
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Package Structure
-
-```
-cramp/
-├── packages/
-│   ├── core/           # Framework core
-│   ├── cli/            # Command line interface
-│   └── create-cramp/   # Project creation tool
-├── examples/           # Example applications
-└── scripts/            # Build and development scripts
-```
+2. Create your feature branch: `git checkout -b feature/amazing`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing`
+5. Submit a pull request
 
 ## License
 
-MIT © CRAMP Team
+MIT © Wansatya
 
-## Development
+## Support
 
-```bash
-# Clone repository
-git clone https://github.com/wansatya/cramp.git
-
-# Install dependencies
-npm install
-
-# Start development
-npm run dev
-
-# Build all packages
-npm run build
-```
-
-## Repository Structure
-
-```
-cramp/
-├── README.md
-├── package.json
-├── packages/
-│   ├── core/                 # Core CRAMP framework
-│   │   ├── package.json
-│   │   ├── src/
-│   │   │   ├── index.js     # Main framework entry
-│   │   │   ├── router.js    # Routing system
-│   │   │   ├── component.js # Component system
-│   │   │   └── ai.js       # AI integration
-│   │   └── dist/           # Built files
-│   │
-│   ├── cli/                # CLI tool
-│   │   ├── package.json
-│   │   ├── bin/
-│   │   │   └── cramp.js    # CLI entry point
-│   │   └── src/
-│   │       ├── commands/   # CLI commands
-│   │       └── templates/  # Project templates
-│   │
-│   └── create-cramp/       # Project creation tool
-│       ├── package.json
-│       └── index.js
-│
-├── examples/               # Example projects
-│   ├── minimal/
-│   ├── chat-app/
-│   └── full-featured/
-│
-└── scripts/               # Build and development scripts
-    ├── build.js
-    └── dev.js
-```
+- Documentation: [crampjs.dev](https://crampjs.dev)
+- GitHub: [wansatya/cramp](https://github.com/wansatya/cramp)
+- Issues: [GitHub Issues](https://github.com/wansatya/cramp/issues)
