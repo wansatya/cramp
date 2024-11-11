@@ -36,7 +36,7 @@ echo "📦 Creating project: $PROJECT_NAME"
 mkdir -p "$PROJECT_NAME"/{src,public} || handle_error "Failed to create project structure"
 cd "$PROJECT_NAME" || handle_error "Failed to enter project directory"
 
-# Create package.json with build script
+# Create package.json with updated dependencies
 cat > package.json << EOL
 {
   "name": "${PROJECT_NAME}",
@@ -49,7 +49,8 @@ cat > package.json << EOL
   },
   "dependencies": {
     "express": "^4.18.2",
-    "ws": "^8.14.2"
+    "ws": "^8.14.2",
+    "chokidar": "^3.5.3"
   },
   "devDependencies": {
     "esbuild": "^0.19.5"
@@ -57,12 +58,13 @@ cat > package.json << EOL
 }
 EOL
 
-# Create development server
+# Create development server with chokidar
 cat > server.js << EOL
 const express = require('express');
 const path = require('path');
 const { createServer } = require('http');
 const { WebSocketServer } = require('ws');
+const chokidar = require('chokidar');
 
 const app = express();
 const server = createServer(app);
@@ -71,8 +73,8 @@ const port = process.env.PORT || 3000;
 
 // Live reload
 wss.on('connection', (ws) => {
-    console.log('Client connected to live reload');
-    ws.on('close', () => console.log('Client disconnected'));
+    console.log('📱 Client connected to live reload');
+    ws.on('close', () => console.log('📱 Client disconnected'));
 });
 
 // Serve static files
@@ -84,19 +86,28 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'src/index.html'));
 });
 
+// Start server
 server.listen(port, () => {
     console.log(\`
 🦀 CRAMP development server running at http://localhost:\${port}
+📝 Edit files in src/ to see live changes
     \`);
 });
 
-// Watch for file changes
-const fs = require('fs');
-fs.watch('src', { recursive: true }, (eventType, filename) => {
-    wss.clients.forEach((client) => {
-        client.send('reload');
-    });
+// Watch for file changes using chokidar
+const watcher = chokidar.watch('src', {
+    ignored: /(^|[\/\\])\../,
+    persistent: true
 });
+
+watcher
+    .on('change', path => {
+        console.log(\`📝 File \${path} has been changed\`);
+        wss.clients.forEach((client) => {
+            client.send('reload');
+        });
+    })
+    .on('error', error => console.error(\`❌ Watcher error: \${error}\`));
 EOL
 
 # Create build script
@@ -106,6 +117,8 @@ const fs = require('fs');
 const path = require('path');
 
 async function build() {
+    console.log('🔨 Building CRAMP application...');
+
     try {
         // Ensure dist directory exists
         if (!fs.existsSync('dist')) {
@@ -118,7 +131,7 @@ async function build() {
 
         console.log('✨ Build complete! Files are in the dist/ directory');
     } catch (error) {
-        console.error('Build failed:', error);
+        console.error('❌ Build failed:', error);
         process.exit(1);
     }
 }
@@ -143,8 +156,16 @@ cat > src/index.html << EOL
 
     <script>
         // Live reload script
-        const ws = new WebSocket('ws://' + window.location.host);
-        ws.onmessage = () => window.location.reload();
+        (() => {
+            const ws = new WebSocket('ws://' + window.location.host);
+            ws.onmessage = () => window.location.reload();
+            ws.onclose = () => {
+                console.log('Dev server disconnected. Attempting to reconnect...');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            };
+        })();
     </script>
 
     <script>
@@ -229,7 +250,7 @@ cat > src/index.html << EOL
 </html>
 EOL
 
-# Create the framework core file with improved component system
+# Create the framework core file
 cat > public/cramp.js << EOL
 // CRAMP Framework Core
 (function(global) {
