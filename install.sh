@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# install.sh
 echo "
 🦀 Installing CRAMP - Creative Rapid AI Modern Platform...
 "
@@ -33,38 +32,50 @@ fi
 
 echo "📦 Creating project: $PROJECT_NAME"
 
-# Create temporary directory
-TEMP_DIR=$(mktemp -d)
-cd $TEMP_DIR || handle_error "Failed to create temporary directory"
+# Create project directory directly (no temp dir needed)
+mkdir -p "$PROJECT_NAME"/{src,public} || handle_error "Failed to create project structure"
+cd "$PROJECT_NAME" || handle_error "Failed to enter project directory"
 
-# Download core files
-echo "⬇️  Downloading CRAMP framework..."
-
-# Core framework file
-curl -s -o cramp.js "https://raw.githubusercontent.com/cramp/cramp/main/packages/core/dist/cramp.js" || handle_error "Failed to download framework"
-
-# Create project structure
-mkdir -p "$PROJECT_NAME"/{src,public}
-cd "$PROJECT_NAME" || handle_error "Failed to create project directory"
-
-# Create package.json
+# Create package.json first
 cat > package.json << EOL
 {
   "name": "${PROJECT_NAME}",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "cramp dev",
+    "dev": "node server.js",
     "build": "cramp build",
-    "start": "cramp start"
+    "start": "node server.js --prod"
   },
   "dependencies": {
-    "@cramp/core": "^1.0.0"
-  },
-  "devDependencies": {
-    "@cramp/cli": "^1.0.0"
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
   }
 }
+EOL
+
+# Create development server
+cat > server.js << EOL
+const express = require('express');
+const path = require('path');
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Serve static files
+app.use(express.static('public'));
+app.use(express.static('src'));
+
+// SPA fallback
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'src/index.html'));
+});
+
+app.listen(port, () => {
+    console.log(\`
+🦀 CRAMP development server running at http://localhost:\${port}
+    \`);
+});
 EOL
 
 # Create index.html
@@ -107,20 +118,6 @@ cat > src/index.html << EOL
                 });
             }
         });
-
-        // Define routes
-        app.router
-            .add('/', {
-                template: '<hello-cramp></hello-cramp>'
-            })
-            .add('/about', {
-                template: \`
-                    <div>
-                        <h2>About CRAMP</h2>
-                        <p>A modern framework for AI applications.</p>
-                    </div>
-                \`
-            });
 
         // Mount the app
         app.mount();
@@ -167,11 +164,68 @@ cat > src/index.html << EOL
 </html>
 EOL
 
-# Copy framework file
-cp ../cramp.js public/
+# Create the framework core file
+cat > public/cramp.js << EOL
+// CRAMP Framework Core
+(function(global) {
+    class Cramp {
+        constructor(config = {}) {
+            this.config = {
+                mountPoint: config.mountPoint || '#app',
+                ...config
+            };
+            this.state = {};
+            this.components = new Map();
+        }
 
-# Initialize git
-git init
+        component(name, template, methods = {}) {
+            this.components.set(name, { template, methods });
+            
+            // Register custom element
+            customElements.define(\`cramp-\${name}\`, class extends HTMLElement {
+                connectedCallback() {
+                    this.innerHTML = template;
+                    Object.assign(this, methods);
+                    this.state = methods.state || {};
+                    this.setupEvents();
+                }
+
+                setState(newState) {
+                    this.state = { ...this.state, ...newState };
+                    this.render();
+                }
+
+                setupEvents() {
+                    this.querySelectorAll('[x-on\\\\:click]').forEach(el => {
+                        const method = el.getAttribute('x-on:click');
+                        el.addEventListener('click', () => this[method]());
+                    });
+                }
+
+                render() {
+                    let html = template;
+                    for (const [key, value] of Object.entries(this.state)) {
+                        html = html.replace(new RegExp(\`{{\\\s*\${key}\\\s*}}\`, 'g'), value);
+                    }
+                    this.innerHTML = html;
+                    this.setupEvents();
+                }
+            });
+        }
+
+        mount() {
+            const root = document.querySelector(this.config.mountPoint);
+            if (!root) throw new Error(\`Mount point \${this.config.mountPoint} not found\`);
+        }
+    }
+
+    global.cramp = {
+        create: (config) => new Cramp(config)
+    };
+})(typeof window !== 'undefined' ? window : global);
+EOL
+
+# Create .gitignore
 cat > .gitignore << EOL
 node_modules
 dist
@@ -179,20 +233,22 @@ dist
 .DS_Store
 EOL
 
+# Initialize git
+git init
+
 # Install dependencies
 echo "📦 Installing dependencies..."
 npm install || handle_error "Failed to install dependencies"
-
-# Cleanup
-cd ..
-rm -rf $TEMP_DIR
 
 echo "
 ✨ CRAMP project created successfully!
 
 To get started:
   cd ${PROJECT_NAME}
-  npm run dev
+  npm install     # Install dependencies
+  npm run dev     # Start development server
+
+Your app will be available at http://localhost:3000
 
 Happy cramping! 🦀
 "
