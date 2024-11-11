@@ -56,33 +56,22 @@ cat > src/index.html << 'EOL'
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRAMP App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/styles/main.css">
     <script>
-        // Configure Tailwind
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         cramp: {
-                            50: '#fff1f1',
-                            100: '#ffdfdf',
-                            200: '#ffc5c5',
-                            300: '#ff9d9d',
-                            400: '#ff6464',
                             500: '#ff4f4f',
-                            600: '#ed1515',
-                            700: '#c80d0d',
-                            800: '#a50f0f',
-                            900: '#881414',
-                            950: '#4b0404',
+                            600: '#ed1515'
                         }
                     }
                 }
             }
-        };
+        }
     </script>
 </head>
-<body>
+<body class="bg-gray-100">
     <div id="root"></div>
     
     <!-- Live reload script -->
@@ -99,7 +88,6 @@ cat > src/index.html << 'EOL'
         })();
     </script>
     
-    <!-- Application entry point -->
     <script type="module" src="/index.js"></script>
 </body>
 </html>
@@ -482,7 +470,7 @@ const chokidar = require('chokidar');
 const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
-const port = process.env.PORT || 3000;
+const port = 3000;
 
 // Live reload
 wss.on('connection', (ws) => {
@@ -490,30 +478,17 @@ wss.on('connection', (ws) => {
     ws.on('close', () => console.log('📱 Client disconnected'));
 });
 
-// Set proper MIME types for JavaScript modules
+// Serve .js files with correct MIME type
 app.use((req, res, next) => {
     if (req.url.endsWith('.js')) {
-        res.type('application/javascript; charset=UTF-8');
+        res.type('application/javascript');
     }
     next();
 });
 
 // Serve static files
-app.use(express.static('public', {
-    setHeaders: (res, path) => {
-        if (path.endsWith('.js')) {
-            res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
-        }
-    }
-}));
-
-app.use(express.static('src', {
-    setHeaders: (res, path) => {
-        if (path.endsWith('.js')) {
-            res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
-        }
-    }
-}));
+app.use(express.static('public'));
+app.use(express.static('src'));
 
 // SPA fallback
 app.get('*', (req, res) => {
