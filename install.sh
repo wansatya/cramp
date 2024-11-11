@@ -140,7 +140,7 @@ build();
 EOL
 
 # Create index.html with live reload
-cat > src/index.html << EOL
+cat > src/index.html << 'EOL'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -148,70 +148,8 @@ cat > src/index.html << EOL
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRAMP App</title>
     <script src="/cramp.js"></script>
-</head>
-<body>
-    <div id="app">
-        <hello-cramp></hello-cramp>
-    </div>
-
-    <script>
-        // Live reload script
-        (() => {
-            const ws = new WebSocket('ws://' + window.location.host);
-            ws.onmessage = () => window.location.reload();
-            ws.onclose = () => {
-                console.log('Dev server disconnected. Attempting to reconnect...');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            };
-        })();
-    </script>
-
-    <script>
-        // Initialize CRAMP
-        document.addEventListener('DOMContentLoaded', () => {
-            const app = cramp.create({
-                mountPoint: '#app'
-            });
-
-            // Define components
-            app.component('hello-cramp', \`
-                <div class="hello">
-                    <h1 class="greeting"></h1>
-                    <button class="btn">Click me!</button>
-                </div>
-            \`, {
-                state: {
-                    greeting: 'Hello CRAMP! 🦀',
-                    buttonText: 'Click me!'
-                },
-                
-                connectedCallback() {
-                    this.render();
-                    this.querySelector('.btn').addEventListener('click', () => this.updateGreeting());
-                },
-
-                updateGreeting() {
-                    this.setState({
-                        greeting: 'CRAMP is awesome! ⚡️'
-                    });
-                },
-
-                render() {
-                    this.querySelector('.greeting').textContent = this.state.greeting;
-                    this.querySelector('.btn').textContent = this.state.buttonText;
-                }
-            });
-
-            // Mount the app
-            app.mount();
-        });
-    </script>
-
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
             padding: 20px;
             background: #f5f5f5;
@@ -225,33 +163,28 @@ cat > src/index.html << EOL
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
-        .hello {
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            background: #FF4F4F;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: transform 0.2s;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-        }
     </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        // Initialize CRAMP
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = cramp.create({
+                mountPoint: '#app'
+            });
+            
+            // Mount the app
+            app.mount();
+        });
+    </script>
 </body>
 </html>
 EOL
 
 # Create the framework core file
-cat > public/cramp.js << EOL
+cat > public/cramp.js << 'EOL'
 // CRAMP Framework Core
 (function(global) {
     class CrampComponent extends HTMLElement {
@@ -262,10 +195,6 @@ cat > public/cramp.js << EOL
 
         get state() {
             return this._state;
-        }
-
-        set state(newState) {
-            this._state = { ...this._state, newState };
         }
 
         setState(newState) {
@@ -280,23 +209,44 @@ cat > public/cramp.js << EOL
                 mountPoint: config.mountPoint || '#app',
                 ...config
             };
-            this.components = new Map();
+            
+            // Automatically define hello-world component
+            this.component('hello-world', {
+                template: '<h1>Hello, World! 🦀</h1>',
+                styles: `
+                    h1 { 
+                        font-family: system-ui, -apple-system, sans-serif;
+                        color: #FF4F4F;
+                        text-align: center;
+                        padding: 20px;
+                        margin: 0;
+                        font-size: 2.5rem;
+                    }
+                `
+            });
         }
 
-        component(name, template, methods = {}) {
+        component(name, options = {}) {
+            const { template, styles, methods = {} } = options;
+
             class CustomComponent extends CrampComponent {
                 constructor() {
                     super();
                     this._state = methods.state || {};
                     Object.assign(this, methods);
-                    this.template = template;
                 }
 
                 connectedCallback() {
+                    // Add styles if provided
+                    if (styles) {
+                        const styleSheet = new CSSStyleSheet();
+                        styleSheet.replaceSync(styles);
+                        this.adoptedStyleSheets = [styleSheet];
+                    }
+
+                    this.render();
                     if (methods.connectedCallback) {
                         methods.connectedCallback.call(this);
-                    } else {
-                        this.render();
                     }
                 }
 
@@ -309,10 +259,10 @@ cat > public/cramp.js << EOL
                 }
 
                 processTemplate() {
-                    let html = this.template;
+                    let html = template;
                     for (const [key, value] of Object.entries(this.state)) {
                         html = html.replace(
-                            new RegExp(\`{{\\\s*\${key}\\\s*}}\`, 'g'),
+                            new RegExp(`{{\\s*${key}\\s*}}`, 'g'),
                             value
                         );
                     }
@@ -320,17 +270,27 @@ cat > public/cramp.js << EOL
                 }
             }
 
-            if (!customElements.get(\`\${name}\`)) {
-                customElements.define(\`\${name}\`, CustomComponent);
+            // Define the custom element
+            if (!customElements.get(name)) {
+                customElements.define(name, CustomComponent);
             }
+
+            return CustomComponent;
         }
 
         mount() {
             const root = document.querySelector(this.config.mountPoint);
-            if (!root) throw new Error(\`Mount point \${this.config.mountPoint} not found\`);
+            if (!root) throw new Error(`Mount point ${this.config.mountPoint} not found`);
+            
+            // Automatically add hello-world component if root is empty
+            if (!root.children.length) {
+                const helloWorld = document.createElement('hello-world');
+                root.appendChild(helloWorld);
+            }
         }
     }
 
+    // Export to global scope
     global.cramp = {
         create: (config) => new Cramp(config)
     };
