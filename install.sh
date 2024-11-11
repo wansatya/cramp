@@ -56,38 +56,10 @@ cat > src/index.html << 'EOL'
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRAMP App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        cramp: {
-                            500: '#ff4f4f',
-                            600: '#ed1515'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="/styles/main.css">
 </head>
-<body class="bg-gray-100">
+<body>
     <div id="root"></div>
-    
-    <!-- Live reload script -->
-    <script>
-        (() => {
-            const ws = new WebSocket(`ws://${window.location.host}`);
-            ws.onmessage = () => window.location.reload();
-            ws.onclose = () => {
-                console.log('Dev server disconnected. Attempting to reconnect...');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            };
-        })();
-    </script>
-    
     <script type="module" src="/index.js"></script>
 </body>
 </html>
@@ -98,6 +70,7 @@ cat > src/index.js << 'EOL'
 import { cramp } from '/cramp.js';
 import App from './App.js';
 
+// Create main app instance
 const app = cramp.create({
     mountPoint: '#root'
 });
@@ -115,99 +88,30 @@ EOL
 
 # Create App.js (main component)
 cat > src/App.js << 'EOL'
-import { cramp } from '/cramp.js';
-import { router } from './router.js';
 import Header from './components/Header.js';
 import Home from './pages/Home.js';
-import About from './pages/About.js';
-import Contact from './pages/Contact.js';
 
 export default {
     template: `
         <div class="min-h-screen bg-gray-50">
             <cramp-header></cramp-header>
-            <main id="main-content"></main>
+            <main>
+                <cramp-home></cramp-home>
+            </main>
         </div>
     `,
     
     async connectedCallback() {
+        // Register child components
         const app = cramp.create();
         app.component('cramp-header', Header);
-
-        // Set up routes
-        router
-            .addRoute('/', Home)
-            .addRoute('/about', About)
-            .addRoute('/contact', Contact)
-            .addRoute('*', {
-                template: `
-                    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 text-center">
-                        <h1 class="text-4xl font-bold mb-4">404 - Page Not Found</h1>
-                        <p class="text-lg text-gray-600">
-                            The page you're looking for doesn't exist.
-                        </p>
-                    </div>
-                `
-            });
-
-        // Initialize router
-        router.init();
-
-        // Handle navigation events
-        window.addEventListener('cramp:navigate', (event) => {
-            router.navigate(event.detail.to);
-        });
-    }
-};
-EOL
-
-# Create NavLink component
-cat > src/components/NavLink.js << 'EOL'
-export default {
-    template: `
-        <a 
-            href="{{ to }}" 
-            data-link 
-            class="text-gray-600 hover:text-cramp-500 px-3 py-2 text-sm font-medium {{ isActive ? 'text-cramp-500' : '' }}"
-            onclick="this.getRootNode().host.handleClick(event)"
-        >
-            <slot></slot>
-        </a>
-    `,
-
-    state: {
-        to: '/',
-        isActive: false
-    },
-
-    connectedCallback() {
-        this.checkActive();
-        window.addEventListener('popstate', () => this.checkActive());
-    },
-
-    checkActive() {
-        this.setState({
-            isActive: window.location.pathname === this.state.to
-        });
-    },
-
-    handleClick(event) {
-        event.preventDefault();
-        this.navigate(this.state.to);
-    },
-
-    navigate(to) {
-        window.dispatchEvent(new CustomEvent('cramp:navigate', { 
-            detail: { to } 
-        }));
+        app.component('cramp-home', Home);
     }
 };
 EOL
 
 # Create Header component
 cat > src/components/Header.js << 'EOL'
-import NavLink from './NavLink.js';
-
 export default {
     template: `
         <header class="bg-white shadow">
@@ -217,19 +121,14 @@ export default {
                         <span class="text-2xl font-bold text-cramp-500">🦀 CRAMP</span>
                     </div>
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <cramp-nav-link to="/">Home</cramp-nav-link>
-                        <cramp-nav-link to="/about">About</cramp-nav-link>
-                        <cramp-nav-link to="/contact">Contact</cramp-nav-link>
+                        <a href="/" class="text-gray-900 hover:text-cramp-500 px-3 py-2 text-sm font-medium">Home</a>
+                        <a href="/about" class="text-gray-900 hover:text-cramp-500 px-3 py-2 text-sm font-medium">About</a>
+                        <a href="/docs" class="text-gray-900 hover:text-cramp-500 px-3 py-2 text-sm font-medium">Docs</a>
                     </div>
                 </div>
             </nav>
         </header>
-    `,
-
-    async connectedCallback() {
-        const app = cramp.create();
-        app.component('cramp-nav-link', NavLink);
-    }
+    `
 };
 EOL
 
@@ -266,81 +165,6 @@ export default {
             count: this.state.count + 1
         });
         console.log('Button clicked!', this.state.count);
-    }
-};
-EOL
-
-# Create About page
-cat > src/pages/About.js << 'EOL'
-export default {
-    template: `
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-            <h1 class="text-4xl font-bold mb-6">About CRAMP</h1>
-            <p class="text-lg text-gray-600 mb-4">
-                CRAMP is a modern framework for building AI-powered applications.
-            </p>
-            <p class="text-lg text-gray-600">
-                Built with simplicity and performance in mind.
-            </p>
-        </div>
-    `
-};
-EOL
-
-# Create Contact page
-cat > src/pages/Contact.js << 'EOL'
-export default {
-    template: `
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-            <h1 class="text-4xl font-bold mb-6">Contact Us</h1>
-            <form class="max-w-md" onsubmit="this.getRootNode().host.handleSubmit(event)">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="name">
-                        Name
-                    </label>
-                    <input 
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                        id="name" 
-                        type="text" 
-                        placeholder="Your name"
-                    >
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="email">
-                        Email
-                    </label>
-                    <input 
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                        id="email" 
-                        type="email" 
-                        placeholder="Your email"
-                    >
-                </div>
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="message">
-                        Message
-                    </label>
-                    <textarea 
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                        id="message" 
-                        placeholder="Your message"
-                        rows="4"
-                    ></textarea>
-                </div>
-                <button 
-                    class="bg-cramp-500 hover:bg-cramp-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" 
-                    type="submit"
-                >
-                    Send Message
-                </button>
-            </form>
-        </div>
-    `,
-
-    handleSubmit(event) {
-        event.preventDefault();
-        // Handle form submission
-        console.log('Form submitted');
     }
 };
 EOL
@@ -470,20 +294,12 @@ const chokidar = require('chokidar');
 const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Live reload
 wss.on('connection', (ws) => {
     console.log('📱 Client connected to live reload');
     ws.on('close', () => console.log('📱 Client disconnected'));
-});
-
-// Serve .js files with correct MIME type
-app.use((req, res, next) => {
-    if (req.url.endsWith('.js')) {
-        res.type('application/javascript');
-    }
-    next();
 });
 
 // Serve static files
@@ -535,19 +351,16 @@ echo "
 ✨ CRAMP project created successfully!
 
 Project structure:
-
   src/
     ├── components/    # Reusable components
-    ├── pages/         # Page components
-    ├── styles/        # CSS styles
-    ├── index.js       # Entry point
-    └── App.js         # Main component
-    └── index.html
+    ├── pages/        # Page components
+    ├── styles/       # CSS styles
+    ├── index.js      # Entry point
+    └── App.js        # Main component
   public/
-    └── cramp.js       # Framework core
+    └── cramp.js      # Framework core
 
 To get started:
-
   cd ${PROJECT_NAME}
   npm run dev     # Start development server
 

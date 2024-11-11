@@ -1,15 +1,18 @@
 // packages/core/src/router.js
 export class Router {
-  constructor() {
+  constructor(app) {
+    this.app = app;
     this.routes = new Map();
-    this.currentComponent = null;
+    this.currentRoute = null;
 
     // Handle browser navigation
     window.addEventListener('popstate', () => this.handleRoute());
+    this.setupClickHandler();
+  }
 
-    // Handle link clicks
+  setupClickHandler() {
     document.addEventListener('click', (e) => {
-      const link = e.target.closest('[data-link]');
+      const link = e.target.closest('[route]');
       if (link) {
         e.preventDefault();
         this.navigate(link.getAttribute('href'));
@@ -17,7 +20,7 @@ export class Router {
     });
   }
 
-  addRoute(path, component) {
+  add(path, component) {
     this.routes.set(path, component);
     return this;
   }
@@ -29,16 +32,18 @@ export class Router {
 
   async handleRoute() {
     const path = window.location.pathname;
-    const Component = this.routes.get(path) || this.routes.get('*');
+    const component = this.routes.get(path) || this.routes.get('*');
 
-    if (Component) {
-      const root = document.querySelector('main');
-      if (root) {
-        const componentName = `cramp-page-${path.replace(/\//g, '-') || 'home'}`;
-        const app = cramp.create();
-        app.component(componentName, Component);
-        root.innerHTML = `<${componentName}></${componentName}>`;
-      }
+    if (component) {
+      const root = document.querySelector(this.app.config.mountPoint);
+      root.innerHTML = '';
+
+      const instance = typeof component === 'function'
+        ? new component()
+        : component;
+
+      root.appendChild(await instance.render());
+      this.currentRoute = instance;
     }
   }
 
@@ -46,36 +51,3 @@ export class Router {
     this.handleRoute();
   }
 }
-
-// Create Link component
-export const Link = {
-  template: `
-      <a 
-          href="{{ to }}" 
-          data-link 
-          class="{{ class }}"
-          onclick="this.getRootNode().host.handleClick(event)"
-      >
-          <slot></slot>
-      </a>
-  `,
-
-  state: {
-    to: '/',
-    class: ''
-  },
-
-  handleClick(event) {
-    event.preventDefault();
-    this.navigate(this.state.to);
-  },
-
-  navigate(to) {
-    window.dispatchEvent(new CustomEvent('cramp:navigate', {
-      detail: { to }
-    }));
-  }
-};
-
-// Create single router instance
-export const router = new Router();
