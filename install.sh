@@ -59,7 +59,7 @@ cat > package.json << EOL
 EOL
 
 # Create development server with chokidar
-cat > server.js << EOL
+cat > server.js << 'EOL'
 const express = require('express');
 const path = require('path');
 const { createServer } = require('http');
@@ -88,26 +88,26 @@ app.get('*', (req, res) => {
 
 // Start server
 server.listen(port, () => {
-    console.log(\`
-🦀 CRAMP development server running at http://localhost:\${port}
+    console.log(`
+🦀 CRAMP development server running at http://localhost:${port}
 📝 Edit files in src/ to see live changes
-    \`);
+    `);
 });
 
 // Watch for file changes using chokidar
 const watcher = chokidar.watch('src', {
-    ignored: /(^|[\/\\])\./, // Fixed regex for dotfiles
+    ignored: /^\.|[\/\\]\./,  // Ignore dotfiles
     persistent: true
 });
 
 watcher
     .on('change', path => {
-        console.log(\`📝 File \${path} has been changed\`);
+        console.log(`📝 File ${path} has been changed`);
         wss.clients.forEach((client) => {
             client.send('reload');
         });
     })
-    .on('error', error => console.error(\`❌ Watcher error: \${error}\`));
+    .on('error', error => console.error(`❌ Watcher error: ${error}`));
 EOL
 
 # Create build script
