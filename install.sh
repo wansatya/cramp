@@ -57,6 +57,30 @@ cat > src/index.html << 'EOL'
     <title>CRAMP App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/styles/main.css">
+    <script>
+        // Configure Tailwind
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cramp: {
+                            50: '#fff1f1',
+                            100: '#ffdfdf',
+                            200: '#ffc5c5',
+                            300: '#ff9d9d',
+                            400: '#ff6464',
+                            500: '#ff4f4f',
+                            600: '#ed1515',
+                            700: '#c80d0d',
+                            800: '#a50f0f',
+                            900: '#881414',
+                            950: '#4b0404',
+                        }
+                    }
+                }
+            }
+        };
+    </script>
 </head>
 <body>
     <div id="root"></div>
@@ -88,6 +112,7 @@ EOL
 
 # Create App.js (main component)
 cat > src/App.js << 'EOL'
+import { cramp } from '/cramp.js';
 import Header from './components/Header.js';
 import Home from './pages/Home.js';
 
@@ -102,7 +127,7 @@ export default {
     `,
     
     async connectedCallback() {
-        // Register child components
+        // Create a new instance for registering components
         const app = cramp.create();
         app.component('cramp-header', Header);
         app.component('cramp-home', Home);
