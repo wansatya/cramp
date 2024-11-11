@@ -32,11 +32,11 @@ fi
 
 echo "📦 Creating project: $PROJECT_NAME"
 
-# Create project directory directly (no temp dir needed)
+# Create project directory
 mkdir -p "$PROJECT_NAME"/{src,public} || handle_error "Failed to create project structure"
 cd "$PROJECT_NAME" || handle_error "Failed to enter project directory"
 
-# Create package.json first
+# Create package.json with build script
 cat > package.json << EOL
 {
   "name": "${PROJECT_NAME}",
@@ -44,12 +44,15 @@ cat > package.json << EOL
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "build": "cramp build",
+    "build": "node build.js",
     "start": "node server.js --prod"
   },
   "dependencies": {
     "express": "^4.18.2",
     "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.5"
   }
 }
 EOL
@@ -58,9 +61,19 @@ EOL
 cat > server.js << EOL
 const express = require('express');
 const path = require('path');
+const { createServer } = require('http');
+const { WebSocketServer } = require('ws');
 
 const app = express();
+const server = createServer(app);
+const wss = new WebSocketServer({ server });
 const port = process.env.PORT || 3000;
+
+// Live reload
+wss.on('connection', (ws) => {
+    console.log('Client connected to live reload');
+    ws.on('close', () => console.log('Client disconnected'));
+});
 
 // Serve static files
 app.use(express.static('public'));
@@ -71,14 +84,49 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'src/index.html'));
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
     console.log(\`
 🦀 CRAMP development server running at http://localhost:\${port}
     \`);
 });
+
+// Watch for file changes
+const fs = require('fs');
+fs.watch('src', { recursive: true }, (eventType, filename) => {
+    wss.clients.forEach((client) => {
+        client.send('reload');
+    });
+});
 EOL
 
-# Create index.html
+# Create build script
+cat > build.js << EOL
+const esbuild = require('esbuild');
+const fs = require('fs');
+const path = require('path');
+
+async function build() {
+    try {
+        // Ensure dist directory exists
+        if (!fs.existsSync('dist')) {
+            fs.mkdirSync('dist');
+        }
+
+        // Copy static files
+        fs.copyFileSync('src/index.html', 'dist/index.html');
+        fs.copyFileSync('public/cramp.js', 'dist/cramp.js');
+
+        console.log('✨ Build complete! Files are in the dist/ directory');
+    } catch (error) {
+        console.error('Build failed:', error);
+        process.exit(1);
+    }
+}
+
+build();
+EOL
+
+# Create index.html with live reload
 cat > src/index.html << EOL
 <!DOCTYPE html>
 <html lang="en">
@@ -90,37 +138,54 @@ cat > src/index.html << EOL
 </head>
 <body>
     <div id="app">
-        <!-- CRAMP will mount here -->
+        <hello-cramp></hello-cramp>
     </div>
 
     <script>
-        const app = cramp.create({
-            mountPoint: '#app'
-        });
+        // Live reload script
+        const ws = new WebSocket('ws://' + window.location.host);
+        ws.onmessage = () => window.location.reload();
+    </script>
 
-        // Define components
-        app.component('hello-cramp', \`
-            <div class="hello">
-                <h1>{{ greeting }}</h1>
-                <button x-on:click="updateGreeting">
-                    {{ buttonText }}
-                </button>
-            </div>
-        \`, {
-            state: {
-                greeting: 'Hello CRAMP! 🦀',
-                buttonText: 'Click me!'
-            },
-            
-            updateGreeting() {
-                this.setState({
-                    greeting: 'CRAMP is awesome! ⚡️'
-                });
-            }
-        });
+    <script>
+        // Initialize CRAMP
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = cramp.create({
+                mountPoint: '#app'
+            });
 
-        // Mount the app
-        app.mount();
+            // Define components
+            app.component('hello-cramp', \`
+                <div class="hello">
+                    <h1 class="greeting"></h1>
+                    <button class="btn">Click me!</button>
+                </div>
+            \`, {
+                state: {
+                    greeting: 'Hello CRAMP! 🦀',
+                    buttonText: 'Click me!'
+                },
+                
+                connectedCallback() {
+                    this.render();
+                    this.querySelector('.btn').addEventListener('click', () => this.updateGreeting());
+                },
+
+                updateGreeting() {
+                    this.setState({
+                        greeting: 'CRAMP is awesome! ⚡️'
+                    });
+                },
+
+                render() {
+                    this.querySelector('.greeting').textContent = this.state.greeting;
+                    this.querySelector('.btn').textContent = this.state.buttonText;
+                }
+            });
+
+            // Mount the app
+            app.mount();
+        });
     </script>
 
     <style>
@@ -145,7 +210,7 @@ cat > src/index.html << EOL
             padding: 20px;
         }
         
-        button {
+        .btn {
             padding: 10px 20px;
             background: #FF4F4F;
             color: white;
@@ -156,7 +221,7 @@ cat > src/index.html << EOL
             transition: transform 0.2s;
         }
         
-        button:hover {
+        .btn:hover {
             transform: translateY(-2px);
         }
     </style>
@@ -164,53 +229,79 @@ cat > src/index.html << EOL
 </html>
 EOL
 
-# Create the framework core file
+# Create the framework core file with improved component system
 cat > public/cramp.js << EOL
 // CRAMP Framework Core
 (function(global) {
+    class CrampComponent extends HTMLElement {
+        constructor() {
+            super();
+            this._state = {};
+        }
+
+        get state() {
+            return this._state;
+        }
+
+        set state(newState) {
+            this._state = { ...this._state, newState };
+        }
+
+        setState(newState) {
+            this._state = { ...this._state, ...newState };
+            this.render();
+        }
+    }
+
     class Cramp {
         constructor(config = {}) {
             this.config = {
                 mountPoint: config.mountPoint || '#app',
                 ...config
             };
-            this.state = {};
             this.components = new Map();
         }
 
         component(name, template, methods = {}) {
-            this.components.set(name, { template, methods });
-            
-            // Register custom element
-            customElements.define(\`cramp-\${name}\`, class extends HTMLElement {
-                connectedCallback() {
-                    this.innerHTML = template;
+            class CustomComponent extends CrampComponent {
+                constructor() {
+                    super();
+                    this._state = methods.state || {};
                     Object.assign(this, methods);
-                    this.state = methods.state || {};
-                    this.setupEvents();
+                    this.template = template;
                 }
 
-                setState(newState) {
-                    this.state = { ...this.state, ...newState };
-                    this.render();
-                }
-
-                setupEvents() {
-                    this.querySelectorAll('[x-on\\\\:click]').forEach(el => {
-                        const method = el.getAttribute('x-on:click');
-                        el.addEventListener('click', () => this[method]());
-                    });
+                connectedCallback() {
+                    if (methods.connectedCallback) {
+                        methods.connectedCallback.call(this);
+                    } else {
+                        this.render();
+                    }
                 }
 
                 render() {
-                    let html = template;
-                    for (const [key, value] of Object.entries(this.state)) {
-                        html = html.replace(new RegExp(\`{{\\\s*\${key}\\\s*}}\`, 'g'), value);
+                    if (methods.render) {
+                        methods.render.call(this);
+                    } else {
+                        this.innerHTML = this.processTemplate();
                     }
-                    this.innerHTML = html;
-                    this.setupEvents();
                 }
-            });
+
+                processTemplate() {
+                    let html = this.template;
+                    for (const [key, value] of Object.entries(this.state)) {
+                        html = html.replace(
+                            new RegExp(\`{{\\\s*\${key}\\\s*}}\`, 'g'),
+                            value
+                        );
+                    }
+                    return html;
+                }
+            }
+
+            if (!customElements.get(\`\${name}\`)) {
+                customElements.define(\`\${name}\`, CustomComponent);
+            }
         }
 
         mount() {
@@ -245,10 +336,12 @@ echo "
 
 To get started:
   cd ${PROJECT_NAME}
-  npm install     # Install dependencies
   npm run dev     # Start development server
 
 Your app will be available at http://localhost:3000
+
+To build for production:
+  npm run build   # Files will be in the dist/ directory
 
 Happy cramping! 🦀
 "
