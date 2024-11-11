@@ -389,16 +389,16 @@ echo "
 Project structure:
   src/
     ├── components/    # Reusable components
-    ├── pages/        # Page components
-    ├── styles/       # CSS styles
-    ├── index.js      # Entry point
-    └── App.js        # Main component
+    ├── pages/         # Page components
+    ├── styles/        # CSS styles
+    ├── index.js       # Entry point
+    └── App.js         # Main component
   public/
-    └── cramp.js      # Framework core
+    └── cramp.js       # Framework core
 
 To get started:
   cd ${PROJECT_NAME}
-  npm run dev     # Start development server
+  npm run dev          # Start development server
 
 Your app will be available at http://localhost:3000
 

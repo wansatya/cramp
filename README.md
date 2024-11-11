@@ -253,6 +253,6 @@ MIT © Wansatya
 
 ## Support
 
-- Documentation: [crampjs.dev](https://crampjs.dev)
+- Documentation: [crampjs.dev](https://crampjs.readthedocs.io)
 - GitHub: [wansatya/cramp](https://github.com/wansatya/cramp)
 - Issues: [GitHub Issues](https://github.com/wansatya/cramp/issues)
