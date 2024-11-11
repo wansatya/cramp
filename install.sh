@@ -84,6 +84,22 @@ cat > src/index.html << 'EOL'
 </head>
 <body>
     <div id="root"></div>
+    
+    <!-- Live reload script -->
+    <script>
+        (() => {
+            const ws = new WebSocket(`ws://${window.location.host}`);
+            ws.onmessage = () => window.location.reload();
+            ws.onclose = () => {
+                console.log('Dev server disconnected. Attempting to reconnect...');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            };
+        })();
+    </script>
+    
+    <!-- Application entry point -->
     <script type="module" src="/index.js"></script>
 </body>
 </html>
@@ -474,9 +490,30 @@ wss.on('connection', (ws) => {
     ws.on('close', () => console.log('📱 Client disconnected'));
 });
 
+// Set proper MIME types for JavaScript modules
+app.use((req, res, next) => {
+    if (req.url.endsWith('.js')) {
+        res.type('application/javascript; charset=UTF-8');
+    }
+    next();
+});
+
 // Serve static files
-app.use(express.static('public'));
-app.use(express.static('src'));
+app.use(express.static('public', {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+        }
+    }
+}));
+
+app.use(express.static('src', {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+        }
+    }
+}));
 
 // SPA fallback
 app.get('*', (req, res) => {
