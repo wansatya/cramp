@@ -49,6 +49,7 @@ EOL
 
 # Create index.html
 cat > src/index.html << 'EOL'
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -559,16 +560,19 @@ echo "
 ✨ CRAMP project created successfully!
 
 Project structure:
+
   src/
     ├── components/    # Reusable components
-    ├── pages/        # Page components
-    ├── styles/       # CSS styles
-    ├── index.js      # Entry point
-    └── App.js        # Main component
+    ├── pages/         # Page components
+    ├── styles/        # CSS styles
+    ├── index.js       # Entry point
+    └── App.js         # Main component
+    └── index.html
   public/
-    └── cramp.js      # Framework core
+    └── cramp.js       # Framework core
 
 To get started:
+
   cd ${PROJECT_NAME}
   npm run dev     # Start development server
 
