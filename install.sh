@@ -229,6 +229,7 @@ EOL
 
 # Create the framework core file
 cat > public/cramp.js << 'EOL'
+// CRAMP Framework Core
 class CrampComponent extends HTMLElement {
     constructor() {
         super();
@@ -251,9 +252,14 @@ class Cramp {
             mountPoint: config.mountPoint || '#root',
             ...config
         };
+        this.components = new Map();
     }
 
     component(name, options = {}) {
+        if (this.components.has(name)) {
+            return this.components.get(name);
+        }
+
         const { template, state = {}, ...methods } = options;
 
         class CustomComponent extends CrampComponent {
@@ -294,6 +300,7 @@ class Cramp {
             customElements.define(name, CustomComponent);
         }
 
+        this.components.set(name, CustomComponent);
         return CustomComponent;
     }
 
@@ -303,9 +310,13 @@ class Cramp {
     }
 }
 
+// Export as ES module
 export const cramp = {
     create: (config) => new Cramp(config)
 };
+
+// Also expose to window for legacy support
+window.cramp = cramp;
 EOL
 
 # Create development server
