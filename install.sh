@@ -94,7 +94,6 @@ cat > src/index.js << 'EOL'
 import { cramp } from '/cramp.js';
 import App from './App.js';
 
-// Create main app instance
 const app = cramp.create({
     mountPoint: '#root'
 });
@@ -113,30 +112,98 @@ EOL
 # Create App.js (main component)
 cat > src/App.js << 'EOL'
 import { cramp } from '/cramp.js';
+import { router } from './router.js';
 import Header from './components/Header.js';
 import Home from './pages/Home.js';
+import About from './pages/About.js';
+import Contact from './pages/Contact.js';
 
 export default {
     template: `
         <div class="min-h-screen bg-gray-50">
             <cramp-header></cramp-header>
-            <main>
-                <cramp-home></cramp-home>
-            </main>
+            <main id="main-content"></main>
         </div>
     `,
     
     async connectedCallback() {
-        // Create a new instance for registering components
         const app = cramp.create();
         app.component('cramp-header', Header);
-        app.component('cramp-home', Home);
+
+        // Set up routes
+        router
+            .addRoute('/', Home)
+            .addRoute('/about', About)
+            .addRoute('/contact', Contact)
+            .addRoute('*', {
+                template: `
+                    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 text-center">
+                        <h1 class="text-4xl font-bold mb-4">404 - Page Not Found</h1>
+                        <p class="text-lg text-gray-600">
+                            The page you're looking for doesn't exist.
+                        </p>
+                    </div>
+                `
+            });
+
+        // Initialize router
+        router.init();
+
+        // Handle navigation events
+        window.addEventListener('cramp:navigate', (event) => {
+            router.navigate(event.detail.to);
+        });
+    }
+};
+EOL
+
+# Create NavLink component
+cat > src/components/NavLink.js << 'EOL'
+export default {
+    template: `
+        <a 
+            href="{{ to }}" 
+            data-link 
+            class="text-gray-600 hover:text-cramp-500 px-3 py-2 text-sm font-medium {{ isActive ? 'text-cramp-500' : '' }}"
+            onclick="this.getRootNode().host.handleClick(event)"
+        >
+            <slot></slot>
+        </a>
+    `,
+
+    state: {
+        to: '/',
+        isActive: false
+    },
+
+    connectedCallback() {
+        this.checkActive();
+        window.addEventListener('popstate', () => this.checkActive());
+    },
+
+    checkActive() {
+        this.setState({
+            isActive: window.location.pathname === this.state.to
+        });
+    },
+
+    handleClick(event) {
+        event.preventDefault();
+        this.navigate(this.state.to);
+    },
+
+    navigate(to) {
+        window.dispatchEvent(new CustomEvent('cramp:navigate', { 
+            detail: { to } 
+        }));
     }
 };
 EOL
 
 # Create Header component
 cat > src/components/Header.js << 'EOL'
+import NavLink from './NavLink.js';
+
 export default {
     template: `
         <header class="bg-white shadow">
@@ -146,14 +213,19 @@ export default {
                         <span class="text-2xl font-bold text-cramp-500">🦀 CRAMP</span>
                     </div>
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="/" class="text-gray-900 hover:text-cramp-500 px-3 py-2 text-sm font-medium">Home</a>
-                        <a href="/about" class="text-gray-900 hover:text-cramp-500 px-3 py-2 text-sm font-medium">About</a>
-                        <a href="/docs" class="text-gray-900 hover:text-cramp-500 px-3 py-2 text-sm font-medium">Docs</a>
+                        <cramp-nav-link to="/">Home</cramp-nav-link>
+                        <cramp-nav-link to="/about">About</cramp-nav-link>
+                        <cramp-nav-link to="/contact">Contact</cramp-nav-link>
                     </div>
                 </div>
             </nav>
         </header>
-    `
+    `,
+
+    async connectedCallback() {
+        const app = cramp.create();
+        app.component('cramp-nav-link', NavLink);
+    }
 };
 EOL
 
@@ -190,6 +262,81 @@ export default {
             count: this.state.count + 1
         });
         console.log('Button clicked!', this.state.count);
+    }
+};
+EOL
+
+# Create About page
+cat > src/pages/About.js << 'EOL'
+export default {
+    template: `
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+            <h1 class="text-4xl font-bold mb-6">About CRAMP</h1>
+            <p class="text-lg text-gray-600 mb-4">
+                CRAMP is a modern framework for building AI-powered applications.
+            </p>
+            <p class="text-lg text-gray-600">
+                Built with simplicity and performance in mind.
+            </p>
+        </div>
+    `
+};
+EOL
+
+# Create Contact page
+cat > src/pages/Contact.js << 'EOL'
+export default {
+    template: `
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+            <h1 class="text-4xl font-bold mb-6">Contact Us</h1>
+            <form class="max-w-md" onsubmit="this.getRootNode().host.handleSubmit(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="name">
+                        Name
+                    </label>
+                    <input 
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                        id="name" 
+                        type="text" 
+                        placeholder="Your name"
+                    >
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="email">
+                        Email
+                    </label>
+                    <input 
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                        id="email" 
+                        type="email" 
+                        placeholder="Your email"
+                    >
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="message">
+                        Message
+                    </label>
+                    <textarea 
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                        id="message" 
+                        placeholder="Your message"
+                        rows="4"
+                    ></textarea>
+                </div>
+                <button 
+                    class="bg-cramp-500 hover:bg-cramp-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" 
+                    type="submit"
+                >
+                    Send Message
+                </button>
+            </form>
+        </div>
+    `,
+
+    handleSubmit(event) {
+        event.preventDefault();
+        // Handle form submission
+        console.log('Form submitted');
     }
 };
 EOL
