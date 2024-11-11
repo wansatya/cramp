@@ -249,10 +249,10 @@ export default {
 
 ## License
 
-MIT © Wansatya
+[MIT © Wansatya Campus](LICENSE)
 
 ## Support
 
-- Documentation: [crampjs.dev](https://crampjs.readthedocs.io)
+- Documentation: [crampjs.readthedocs.io](https://crampjs.readthedocs.io)
 - GitHub: [wansatya/cramp](https://github.com/wansatya/cramp)
 - Issues: [GitHub Issues](https://github.com/wansatya/cramp/issues)
